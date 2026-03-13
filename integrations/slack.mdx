@@ -1,0 +1,207 @@
+---
+title: 'Slack Integration'
+description: 'Send notifications to Slack channels and direct messages'
+---
+
+## Overview
+
+Whecho integrates seamlessly with Slack's Incoming Webhooks, allowing you to send notifications directly to Slack channels or direct messages from your command line or Python scripts.
+
+## Creating a Slack Webhook
+
+<Steps>
+  <Step title="Create a Slack App">
+    1. Go to [api.slack.com/apps](https://api.slack.com/apps)
+    2. Click **Create New App**
+    3. Choose **From scratch**
+    4. Name your app (e.g., "Whecho Notifications") and select your workspace
+  </Step>
+  
+  <Step title="Enable Incoming Webhooks">
+    1. In your app settings, click **Incoming Webhooks**
+    2. Toggle **Activate Incoming Webhooks** to **On**
+    3. Click **Add New Webhook to Workspace**
+    4. Select the channel where messages should appear
+    5. Click **Allow**
+  </Step>
+  
+  <Step title="Copy Webhook URL">
+    Copy the webhook URL that starts with `https://hooks.slack.com/services/...`
+  </Step>
+  
+  <Step title="Configure Whecho">
+    Initialize whecho with your Slack webhook URL:
+    ```bash
+    whecho --init
+    ```
+    
+    Paste your webhook URL when prompted for `default_url`.
+  </Step>
+</Steps>
+
+<Info>
+  For detailed instructions, visit the [Slack Incoming Webhooks documentation](https://api.slack.com/messaging/webhooks).
+</Info>
+
+## URL Detection
+
+Whecho automatically detects Slack webhooks when the URL contains:
+- `slack.com`
+
+When a Slack URL is detected, whecho uses the appropriate JSON payload format for Slack's API.
+
+## JSON Payload Format
+
+Slack webhooks receive a simple JSON structure:
+
+```json
+{
+  "text": "Your message here"
+}
+```
+
+### Payload Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | The message text to display in the Slack channel |
+
+<Note>
+  Unlike Discord, Slack webhooks use the `text` field instead of `content`. Whecho handles this difference automatically.
+</Note>
+
+## Usage Examples
+
+### Command Line Usage
+
+```bash
+# Send a basic notification
+whecho "Database backup completed"
+
+# Send to a specific Slack webhook
+whecho -u https://hooks.slack.com/services/T00/B00/XXX "Server restarted"
+
+# Debug mode to verify the payload
+whecho -d "Test notification"
+```
+
+### Python Integration
+
+```python
+from whecho.whecho import whecho_simple
+
+# Notify when a script completes
+def process_data():
+    # Your processing logic
+    data = load_and_process()
+    whecho_simple("Data processing pipeline completed successfully")
+    return data
+
+# Error notifications
+import sys
+
+try:
+    critical_operation()
+except Exception as e:
+    whecho_simple(f"ALERT: Critical operation failed - {e}")
+    sys.exit(1)
+```
+
+### Advanced Usage with Command Chaining
+
+```bash
+# Notify on success or failure
+pytest tests/ && whecho "✅ All tests passed" || whecho "❌ Tests failed"
+
+# Long-running jobs
+docker build -t myapp . && \
+  docker push myapp:latest && \
+  whecho "Docker image built and pushed successfully"
+
+# CI/CD pipeline notification
+git pull && \
+  npm install && \
+  npm run build && \
+  npm test && \
+  whecho "Deployment pipeline completed"
+```
+
+## Message Formatting
+
+Slack supports basic formatting in webhook messages:
+
+```bash
+# Bold text
+whecho "*Important:* Server maintenance at 2 AM"
+
+# Italic text
+whecho "_Backup completed in 5 minutes_"
+
+# Code blocks
+whecho "Error code: \`500\`"
+
+# Links
+whecho "Check the dashboard: <https://example.com|Dashboard>"
+```
+
+<Warning>
+  Slack webhook URLs are sensitive credentials. Never commit them to version control or share them publicly.
+</Warning>
+
+## Configuration Options
+
+Customize how messages appear by modifying your whecho configuration:
+
+```bash
+whecho --init
+```
+
+You can modify:
+- `default_url`: Your default Slack webhook URL
+- `user`: The username shown in notifications (if you include it in messages)
+- `machine`: The machine name (if you include it in messages)
+
+## Troubleshooting
+
+### Message Not Appearing in Slack
+
+1. **Verify the webhook URL**: Ensure it starts with `https://hooks.slack.com/services/`
+2. **Check channel permissions**: Make sure the webhook is still authorized for the target channel
+3. **Test with debug mode**:
+   ```bash
+   whecho -d "Test message"
+   ```
+   Look for:
+   ```
+   Detected slack.com in URL
+   Data: {'text': 'Test message'}
+   Response: <Response [200]>
+   ```
+
+### Common Error Responses
+
+| Status Code | Meaning | Solution |
+|-------------|---------|----------|
+| 200 | Success | Message delivered |
+| 404 | Webhook not found | Verify webhook URL is correct |
+| 410 | Webhook removed | Recreate the webhook in Slack |
+| 500 | Slack server error | Retry after a moment |
+
+## Multiple Webhooks
+
+You can send to different Slack channels by specifying different webhooks:
+
+```bash
+# Default channel
+whecho "General notification"
+
+# Specific channel for alerts
+whecho -u $SLACK_ALERTS_WEBHOOK "Critical alert"
+
+# Different channel for deployments
+whecho -u $SLACK_DEPLOY_WEBHOOK "Deployment started"
+```
+
+<Info>
+  Store multiple webhook URLs as environment variables for easy access to different channels.
+</Info>

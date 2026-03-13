@@ -1,0 +1,123 @@
+---
+title: Installation
+description: Install whecho and verify your setup
+---
+
+## System Requirements
+
+whecho requires:
+- **Python 3.6 or higher**
+- **pip** (Python package installer)
+
+whecho is cross-platform and works on:
+- Linux
+- Windows 10+
+- macOS (Darwin)
+
+## Installation Methods
+
+<CodeGroup>
+
+```bash Standard Installation
+pip install whecho
+```
+
+```bash User Installation
+pip install --user whecho
+```
+
+```bash Upgrade Existing
+pip install --upgrade whecho
+```
+
+</CodeGroup>
+
+<Note>
+The standard installation requires appropriate permissions. If you encounter permission errors, use `pip install --user whecho` or consider using a virtual environment.
+</Note>
+
+## Verify Installation
+
+After installation, verify whecho is working correctly:
+
+```bash
+whecho --version
+```
+
+This should output the current version (e.g., `0.0.6`).
+
+## Dependencies
+
+whecho automatically installs the following dependencies:
+
+- **requests** (≥2.25.1) - For HTTP webhook requests
+- **toml** (≥0.6.0) - For configuration file management
+- **importlib-metadata** (≥1.0, Python &lt;3.8 only) - For version metadata
+
+## Configuration File Locations
+
+whecho stores its configuration in platform-specific locations:
+
+<CodeGroup>
+
+```bash Linux
+~/.config/.whecho/config.toml
+```
+
+```bash Windows
+%APPDATA%\.whecho\config.toml
+```
+
+```bash macOS
+~/Library/Application Support/.whecho/config.toml
+```
+
+</CodeGroup>
+
+<Note>
+These directories are created automatically when you run `whecho --init` for the first time.
+</Note>
+
+## Troubleshooting
+
+### Python Version Issues
+
+If you receive an error about Python version compatibility:
+
+```bash
+# Check your Python version
+python --version
+
+# Or try using python3 explicitly
+pip3 install whecho
+```
+
+### Permission Denied Errors
+
+If you encounter permission errors during installation:
+
+```bash
+# Install for your user only
+pip install --user whecho
+
+# Or use a virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install whecho
+```
+
+### Command Not Found
+
+If `whecho` command is not found after installation:
+
+1. Ensure your Python scripts directory is in your PATH
+2. Try using `python -m whecho` instead
+3. On Windows, restart your terminal after installation
+
+## Next Steps
+
+Now that whecho is installed, proceed to the quickstart guide:
+
+<Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+  Configure whecho and send your first webhook message
+</Card>

@@ -1,0 +1,70 @@
+---
+title: Introduction
+description: Linux echo with webhooks - get notified when your jobs finish
+---
+
+## What is whecho?
+
+whecho (pronounced "weh-cho") is a command-line tool that sends messages to webhooks. Think of it as `echo` for the modern age - instead of just printing to your terminal, whecho sends notifications to your favorite messaging platforms.
+
+**Don't guess when a job is finished - have it message you!** ⚓
+
+## Why whecho?
+
+If you've ever run a long-running script or deployment and had to constantly check if it's done, whecho is for you. Simply append `&& whecho "Job finished!"` to your command and get notified on Discord, Slack, Webex, or Teams when it completes.
+
+```bash
+# Run a long build and get notified when done
+make build && whecho "Build completed successfully!"
+
+# Monitor deployments
+kubectl apply -f deployment.yaml && whecho "Deployment finished"
+
+# Track data processing
+python process_data.py && whecho "Data processing complete"
+```
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Cross-Platform" icon="desktop">
+    Works on Linux, Windows, and macOS with Python 3.6+
+  </Card>
+  <Card title="Multiple Webhooks" icon="globe">
+    Supports Discord, Slack, Webex Teams, and Microsoft Teams
+  </Card>
+  <Card title="Simple CLI" icon="terminal">
+    Intuitive command-line interface with straightforward options
+  </Card>
+  <Card title="Python API" icon="code">
+    Use whecho directly in your Python scripts with `whecho_simple()`
+  </Card>
+</CardGroup>
+
+## Supported Platforms
+
+whecho automatically detects your webhook URL and formats messages appropriately:
+
+- **Discord** - Full username and content support
+- **Slack** - Clean text messages
+- **Webex Teams** - Markdown formatting support
+- **Microsoft Teams** - Standard text notifications
+- **Generic Webhooks** - Fallback support for any webhook accepting JSON with a `text` field
+
+## Use Cases
+
+- **DevOps**: Get notified when deployments, builds, or tests complete
+- **Data Science**: Track long-running training jobs or data pipelines
+- **System Administration**: Monitor cron jobs and scheduled tasks
+- **Development**: Alert your team when critical scripts finish
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install whecho via pip and verify your setup
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Send your first webhook message in under 2 minutes
+  </Card>
+</CardGroup>

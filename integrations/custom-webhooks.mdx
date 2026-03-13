@@ -1,0 +1,416 @@
+---
+title: 'Custom Webhooks'
+description: 'Use whecho with any generic webhook endpoint'
+---
+
+## Overview
+
+Whecho isn't limited to Discord, Slack, Webex, and Teams. It can work with any webhook endpoint that accepts JSON POST requests. When whecho doesn't recognize the webhook URL, it automatically uses a generic JSON format that works with many services.
+
+## How It Works
+
+Whecho uses URL pattern matching to detect webhook platforms:
+
+```python
+# Recognized patterns:
+# - discord.com / discordapp.com → Discord format
+# - slack.com → Slack format  
+# - webhook.office.com → Teams format
+# - webexapis.com → Webex format
+# - Everything else → Generic format
+```
+
+If your webhook URL doesn't match any of these patterns, whecho automatically uses the **default generic format**.
+
+## Default JSON Format
+
+For custom/unrecognized webhooks, whecho sends this payload:
+
+```json
+{
+  "text": "Your message here"
+}
+```
+
+This simple format is compatible with many webhook services including:
+- Mattermost
+- Rocket.Chat
+- Custom internal webhook services
+- Many automation platforms (Zapier, Make, n8n)
+- Generic webhook receivers
+
+<Info>
+  The `text` field is the most common standard for webhook payloads, making whecho compatible with many services out of the box.
+</Info>
+
+## Usage
+
+### Basic Example
+
+```bash
+# Send to any webhook endpoint
+whecho -u https://your-custom-webhook.example.com/endpoint "Hello from whecho!"
+
+# Set as default webhook
+whecho --init
+# Enter your custom webhook URL when prompted
+
+# Use the default webhook
+whecho "Your message"
+```
+
+### Debug Mode
+
+Use debug mode to see exactly what's being sent:
+
+```bash
+whecho -d -u https://custom.example.com/webhook "Test message"
+```
+
+Output:
+```
+Detected unsupported URL: custom.example.com
+attempting to send to generic webhook with text field in json post body.
+Data: {'text': 'Test message'}
+Response: <Response [200]>
+```
+
+<Note>
+  The debug output shows when whecho falls back to the generic format. This is not an error—it's the expected behavior for custom webhooks.
+</Note>
+
+## Compatible Services
+
+### Mattermost
+
+Mattermost uses the same webhook format as Slack:
+
+```bash
+# Mattermost incoming webhook
+whecho -u https://mattermost.example.com/hooks/xxx "Build completed"
+```
+
+<Info>
+  Since Mattermost URLs typically don't contain "slack.com", whecho uses the generic format, which is compatible with Mattermost's incoming webhooks.
+</Info>
+
+### Rocket.Chat
+
+```bash
+# Rocket.Chat webhook
+whecho -u https://rocket.example.com/hooks/xxx "Deployment finished"
+```
+
+### Zapier
+
+Catch webhooks in Zapier workflows:
+
+```bash
+# Zapier webhook URL
+whecho -u https://hooks.zapier.com/hooks/catch/123456/abcdef/ "Trigger automation"
+```
+
+In your Zap:
+1. Add a "Webhooks by Zapier" trigger
+2. Choose "Catch Hook"
+3. Use the provided URL with whecho
+4. The message will be in the `text` field
+
+### n8n
+
+```bash
+# n8n webhook
+whecho -u https://n8n.example.com/webhook/xxx "Start workflow"
+```
+
+### Make (formerly Integromat)
+
+```bash
+# Make webhook
+whecho -u https://hook.make.com/xxx "Process data"
+```
+
+## Custom Integration Examples
+
+### Python Flask Webhook Receiver
+
+Create a simple webhook receiver:
+
+```python
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.get_json()
+    message = data.get('text', 'No message')
+    print(f"Received: {message}")
+    # Process the message
+    return {'status': 'success'}, 200
+
+if __name__ == '__main__':
+    app.run(port=5000)
+```
+
+Send to it with whecho:
+
+```bash
+whecho -u http://localhost:5000/webhook "Hello Flask!"
+```
+
+### Node.js Express Webhook
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+app.post('/webhook', (req, res) => {
+  const message = req.body.text;
+  console.log('Received:', message);
+  // Process the message
+  res.json({ status: 'success' });
+});
+
+app.listen(3000, () => {
+  console.log('Webhook receiver listening on port 3000');
+});
+```
+
+### AWS Lambda Webhook
+
+```python
+import json
+
+def lambda_handler(event, context):
+    body = json.loads(event['body'])
+    message = body.get('text', 'No message')
+    
+    # Process the message
+    print(f"Received: {message}")
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'status': 'success'})
+    }
+```
+
+Use with API Gateway URL:
+
+```bash
+whecho -u https://xxx.execute-api.region.amazonaws.com/prod/webhook "Lambda test"
+```
+
+## Debugging Custom Webhooks
+
+Always test new webhook endpoints with debug mode:
+
+```bash
+whecho -d -u https://your-webhook.example.com/endpoint "Test"
+```
+
+### What to Check
+
+<Steps>
+  <Step title="Verify URL Detection">
+    Debug output should show:
+    ```
+    Detected unsupported URL: your-webhook.example.com
+    attempting to send to generic webhook with text field in json post body.
+    ```
+  </Step>
+  
+  <Step title="Check Payload Format">
+    Verify the JSON payload:
+    ```
+    Data: {'text': 'Test'}
+    ```
+  </Step>
+  
+  <Step title="Examine Response">
+    Check the HTTP response:
+    ```
+    Response: <Response [200]>
+    ```
+    - 200: Success
+    - 404: Endpoint not found
+    - 500: Server error
+  </Step>
+</Steps>
+
+## Adapting to Different Formats
+
+If your webhook expects a different JSON structure, you have options:
+
+### Option 1: Create a Proxy Endpoint
+
+Create a middleware service that transforms the payload:
+
+```python
+# proxy.py - Transform whecho payload to custom format
+from flask import Flask, request
+import requests
+
+app = Flask(__name__)
+
+@app.route('/proxy', methods=['POST'])
+def proxy():
+    # Receive whecho format
+    whecho_data = request.get_json()
+    message = whecho_data.get('text')
+    
+    # Transform to your custom format
+    custom_data = {
+        'notification': {
+            'body': message,
+            'timestamp': datetime.now().isoformat()
+        }
+    }
+    
+    # Forward to actual webhook
+    response = requests.post(
+        'https://actual-webhook.example.com/endpoint',
+        json=custom_data
+    )
+    
+    return {'status': 'success'}, 200
+```
+
+Use the proxy:
+
+```bash
+whecho -u http://localhost:5000/proxy "Your message"
+```
+
+### Option 2: Wrapper Script
+
+Create a shell script that uses curl with custom formatting:
+
+```bash
+#!/bin/bash
+# custom-notify.sh
+
+MESSAGE="$1"
+WEBHOOK_URL="https://custom-webhook.example.com/endpoint"
+
+# Create custom JSON format
+curl -X POST "$WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"notification\": {
+      \"title\": \"Whecho Alert\",
+      \"body\": \"$MESSAGE\",
+      \"priority\": \"high\"
+    }
+  }"
+```
+
+Use it instead of whecho for that specific endpoint:
+
+```bash
+./custom-notify.sh "Build completed"
+```
+
+## Testing with RequestBin
+
+Use RequestBin to see exactly what whecho sends:
+
+<Steps>
+  <Step title="Create a RequestBin">
+    1. Go to [requestbin.com](https://requestbin.com) or use [webhook.site](https://webhook.site)
+    2. Copy the generated URL
+  </Step>
+  
+  <Step title="Send Test Message">
+    ```bash
+    whecho -u https://xxxxxx.x.pipedream.net "Test message"
+    ```
+  </Step>
+  
+  <Step title="Inspect Request">
+    View the request details on RequestBin to see:
+    - HTTP headers
+    - JSON payload
+    - Request body
+  </Step>
+</Steps>
+
+## Environment Variables
+
+Manage multiple custom webhooks:
+
+```bash
+# ~/.bashrc or ~/.zshrc
+export WHECHO_MATTERMOST="https://mattermost.company.com/hooks/xxx"
+export WHECHO_INTERNAL="https://internal-webhook.company.com/notify"
+export WHECHO_MONITORING="https://monitor.company.com/webhook"
+
+# Usage
+whecho -u $WHECHO_MATTERMOST "Team notification"
+whecho -u $WHECHO_INTERNAL "Internal alert"
+whecho -u $WHECHO_MONITORING "System status"
+```
+
+## Limitations
+
+<Warning>
+  **Format Compatibility**: The generic `{"text": "message"}` format works with many services, but not all. If your webhook requires a different JSON structure, you'll need to use a proxy or wrapper script.
+</Warning>
+
+The generic format won't work if your webhook requires:
+- Different field names (e.g., `message`, `body`, `content` instead of `text`)
+- Nested JSON structures
+- Additional required fields
+- Authentication headers
+- Specific content types
+
+For these cases, consider:
+1. Using a proxy endpoint (see examples above)
+2. Creating a custom wrapper script
+3. Contributing to whecho to add native support for your platform
+
+## Security Considerations
+
+<Warning>
+  **URL Security**: Custom webhook URLs often contain secret tokens. Protect them as credentials:
+  - Never commit webhook URLs to version control
+  - Use environment variables
+  - Restrict file permissions on config files
+  - Use HTTPS endpoints only
+</Warning>
+
+```bash
+# Secure your config file
+chmod 600 ~/.config/.whecho/config.toml
+
+# Use environment variables in scripts
+WEBHOOK_URL="$SECURE_WEBHOOK_URL"  # from env
+whecho -u "$WEBHOOK_URL" "Message"
+```
+
+## Best Practices
+
+1. **Always test with debug mode** first:
+   ```bash
+   whecho -d -u https://new-webhook.example.com "test"
+   ```
+
+2. **Use RequestBin/webhook.site** to inspect payloads when integrating new services
+
+3. **Store webhook URLs securely** as environment variables
+
+4. **Document your custom integrations** for team members
+
+5. **Handle errors gracefully**:
+   ```bash
+   whecho -u $CUSTOM_WEBHOOK "Job complete" || echo "Notification failed"
+   ```
+
+6. **Consider rate limits** when sending many notifications
+
+7. **Use meaningful messages** that include context:
+   ```bash
+   whecho "[$HOSTNAME] Backup completed - $(date)"
+   ```

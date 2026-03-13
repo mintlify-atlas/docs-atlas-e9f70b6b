@@ -1,0 +1,359 @@
+---
+title: Python API
+description: Use whecho programmatically in your Python applications
+---
+
+## Overview
+
+While whecho is primarily designed for command-line use, it also provides a simple Python API that you can use in scripts, applications, and Jupyter notebooks.
+
+## Import
+
+```python
+from whecho.whecho import whecho_simple
+```
+
+## Function Signature
+
+```python
+def whecho_simple(
+    msg: str,
+    url: str = "",
+    debug: bool = False
+) -> Optional[requests.models.Response]
+```
+
+## Parameters
+
+<ParamField path="msg" type="str" required>
+  The message to be posted to the webhook.
+</ParamField>
+
+<ParamField path="url" type="str" default="">
+  The webhook URL to send the message to. If not provided or empty, whecho will load the default URL from your configuration file.
+</ParamField>
+
+<ParamField path="debug" type="bool" default="False">
+  Whether to print debugging information. When enabled, prints config details, detected webhook type, and HTTP response information.
+</ParamField>
+
+## Return Value
+
+The function returns:
+- `None` when `debug=False` (default)
+- `requests.models.Response` object when `debug=True`, allowing you to inspect the HTTP response
+
+## Basic Usage
+
+<Steps>
+  <Step title="Using Default Configuration">
+    Send a message using your configured default webhook URL:
+
+    ```python
+    from whecho.whecho import whecho_simple
+
+    whecho_simple("Hello from Python! 🐍")
+    ```
+  </Step>
+  
+  <Step title="Specifying a Custom URL">
+    Override the default URL for a specific message:
+
+    ```python
+    from whecho.whecho import whecho_simple
+
+    webhook_url = "https://discord.com/api/webhooks/..."
+    whecho_simple("Custom webhook message", url=webhook_url)
+    ```
+  </Step>
+  
+  <Step title="Debug Mode">
+    Enable debug output to see detailed information:
+
+    ```python
+    from whecho.whecho import whecho_simple
+
+    response = whecho_simple("Debug test", debug=True)
+    print(f"Status code: {response.status_code}")
+    ```
+  </Step>
+</Steps>
+
+## Advanced Examples
+
+### Error Handling
+
+Handle potential errors when sending messages:
+
+```python
+from whecho.whecho import whecho_simple
+import requests
+
+try:
+    response = whecho_simple(
+        "Important notification",
+        url="https://discord.com/api/webhooks/...",
+        debug=True
+    )
+    
+    if response and response.status_code in [200, 204]:
+        print("Message sent successfully!")
+    else:
+        print(f"Unexpected status: {response.status_code}")
+        
+except requests.exceptions.RequestException as e:
+    print(f"Failed to send message: {e}")
+except ValueError as e:
+    print(f"Configuration error: {e}")
+```
+
+<Note>
+The function raises `ValueError` if no URL is provided and whecho hasn't been initialized with `whecho --init`, or if the message is empty.
+</Note>
+
+### Script Integration
+
+Notify yourself when a data processing script completes:
+
+```python
+import time
+from whecho.whecho import whecho_simple
+
+def process_data():
+    """Long-running data processing function"""
+    whecho_simple("📊 Data processing started")
+    
+    try:
+        # Your data processing logic here
+        time.sleep(10)  # Simulating long operation
+        result = "Processed 1000 records"
+        
+        whecho_simple(f"✅ Data processing complete: {result}")
+        return result
+        
+    except Exception as e:
+        whecho_simple(f"❌ Data processing failed: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    process_data()
+```
+
+### Application Monitoring
+
+Integrate whecho into your application for monitoring:
+
+```python
+from whecho.whecho import whecho_simple
+import logging
+
+class WebhookNotificationHandler(logging.Handler):
+    """Custom logging handler that sends critical logs to webhook"""
+    
+    def __init__(self, webhook_url=None):
+        super().__init__()
+        self.webhook_url = webhook_url
+        self.setLevel(logging.CRITICAL)
+    
+    def emit(self, record):
+        log_message = self.format(record)
+        try:
+            whecho_simple(f"🚨 CRITICAL: {log_message}", url=self.webhook_url)
+        except Exception:
+            # Don't let webhook failures break the application
+            pass
+
+# Usage
+logger = logging.getLogger(__name__)
+logger.addHandler(WebhookNotificationHandler())
+
+logger.critical("Database connection lost!")
+```
+
+### Jupyter Notebook Usage
+
+Get notified when long-running notebook cells complete:
+
+```python
+# Cell 1: Import
+from whecho.whecho import whecho_simple
+
+# Cell 2: Long computation
+import pandas as pd
+import numpy as np
+
+whecho_simple("🔬 Starting analysis...")
+
+# Your analysis code
+df = pd.DataFrame(np.random.randn(1000000, 10))
+result = df.describe()
+
+whecho_simple("✅ Analysis complete! Check your notebook.")
+```
+
+### Multiple Webhooks
+
+Send to different channels based on message priority:
+
+```python
+from whecho.whecho import whecho_simple
+
+class NotificationService:
+    def __init__(self):
+        self.info_webhook = "https://discord.com/api/webhooks/info-channel"
+        self.alert_webhook = "https://discord.com/api/webhooks/alerts-channel"
+    
+    def info(self, message):
+        """Send informational messages"""
+        whecho_simple(f"ℹ️ {message}", url=self.info_webhook)
+    
+    def alert(self, message):
+        """Send alert messages"""
+        whecho_simple(f"⚠️ {message}", url=self.alert_webhook)
+    
+    def critical(self, message):
+        """Send critical messages to both channels"""
+        whecho_simple(f"🚨 CRITICAL: {message}", url=self.info_webhook)
+        whecho_simple(f"🚨 CRITICAL: {message}", url=self.alert_webhook)
+
+# Usage
+notifier = NotificationService()
+notifier.info("System started")
+notifier.alert("High CPU usage detected")
+notifier.critical("Service down!")
+```
+
+### Automated Testing
+
+Send test results to a webhook:
+
+```python
+import unittest
+from whecho.whecho import whecho_simple
+
+class TestRunner:
+    def __init__(self, webhook_url=None):
+        self.webhook_url = webhook_url
+    
+    def run_tests(self, test_suite):
+        runner = unittest.TextTestRunner()
+        result = runner.run(test_suite)
+        
+        if result.wasSuccessful():
+            message = f"✅ All {result.testsRun} tests passed!"
+        else:
+            failures = len(result.failures) + len(result.errors)
+            message = f"❌ {failures}/{result.testsRun} tests failed"
+        
+        whecho_simple(message, url=self.webhook_url)
+        return result
+
+# Usage
+if __name__ == "__main__":
+    loader = unittest.TestLoader()
+    suite = loader.discover('tests')
+    
+    test_runner = TestRunner()
+    test_runner.run_tests(suite)
+```
+
+## Message Formatting Tips
+
+<Accordion title="Emoji Support">
+  whecho supports emoji in messages across all webhook platforms:
+  
+  ```python
+  whecho_simple("✅ Success")
+  whecho_simple("❌ Error")
+  whecho_simple("⚠️ Warning")
+  whecho_simple("📊 Data ready")
+  whecho_simple("🚀 Deployed")
+  ```
+</Accordion>
+
+<Accordion title="Markdown Formatting (Webex)">
+  For Webex webhooks, you can use markdown:
+  
+  ```python
+  message = """
+  **Important Update**
+  
+  - Item 1
+  - Item 2
+  - Item 3
+  
+  [Link](https://example.com)
+  """
+  whecho_simple(message, url="https://webexapis.com/v1/webhooks/...")
+  ```
+</Accordion>
+
+<Accordion title="Multi-line Messages">
+  Use triple-quoted strings for multi-line messages:
+  
+  ```python
+  message = """
+  Deployment Summary:
+  - Environment: Production
+  - Version: 2.1.0
+  - Status: Success
+  - Time: 14:32 UTC
+  """
+  whecho_simple(message)
+  ```
+</Accordion>
+
+## Configuration Loading
+
+When you call `whecho_simple()` without a URL, it automatically loads your configuration file to get the default webhook URL. This happens behind the scenes:
+
+```python
+# These are equivalent if you have a default_url configured:
+whecho_simple("Hello")
+whecho_simple("Hello", url="")  # Empty string also loads config
+
+# This overrides the config:
+whecho_simple("Hello", url="https://custom.webhook.url")
+```
+
+<Warning>
+If you haven't run `whecho --init` and don't provide a URL parameter, `whecho_simple()` will raise a `ValueError`.
+</Warning>
+
+## Supported Webhook Platforms
+
+The Python API supports the same webhook platforms as the CLI:
+
+<CardGroup cols={2}>
+  <Card title="Discord" icon="discord">
+    Automatically detected from URL
+    ```python
+    whecho_simple("Hello", 
+      url="https://discord.com/api/webhooks/...")
+    ```
+  </Card>
+  
+  <Card title="Slack" icon="slack">
+    Automatically detected from URL
+    ```python
+    whecho_simple("Hello",
+      url="https://hooks.slack.com/...")
+    ```
+  </Card>
+  
+  <Card title="Webex" icon="cisco">
+    Supports markdown formatting
+    ```python
+    whecho_simple("**Bold** message",
+      url="https://webexapis.com/...")
+    ```
+  </Card>
+  
+  <Card title="Generic" icon="webhook">
+    Falls back to generic JSON format
+    ```python
+    whecho_simple("Hello",
+      url="https://custom.webhook.url")
+    ```
+  </Card>
+</CardGroup>

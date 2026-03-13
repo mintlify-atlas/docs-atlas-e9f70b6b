@@ -1,0 +1,380 @@
+---
+title: Configuration
+description: Configure whecho with default settings and webhook URLs
+---
+
+## Overview
+
+whecho stores configuration in a TOML file that includes your default webhook URL and system information. This allows you to use whecho without specifying the webhook URL every time.
+
+## Configuration File Location
+
+The configuration file location varies by operating system:
+
+<CodeGroup>
+```text Linux
+~/.config/.whecho/config.toml
+```
+
+```text macOS
+~/Library/Application Support/.whecho/config.toml
+```
+
+```text Windows
+~\AppData\Roaming\.whecho\config.toml
+```
+</CodeGroup>
+
+<Note>
+whecho automatically detects your operating system and uses the appropriate path.
+</Note>
+
+## Initial Setup
+
+<Steps>
+  <Step title="Get a Webhook URL">
+    First, obtain a webhook URL from your preferred platform:
+    
+    - [Discord Webhooks](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)
+    - [Slack Incoming Webhooks](https://api.slack.com/messaging/webhooks)
+    - [Webex Incoming Webhooks](https://apphub.webex.com/applications/incoming-webhooks-cisco-systems-38054-23307-75252)
+  </Step>
+  
+  <Step title="Initialize whecho">
+    Run the initialization command:
+    
+    ```bash
+    whecho --init
+    ```
+  </Step>
+  
+  <Step title="Configure Default URL">
+    You'll see an interactive prompt:
+    
+    ```text
+    Current config:
+    [1] default_url: None
+    [2] user: john
+    [3] machine: laptop
+    
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit):
+    ```
+    
+    Enter `1` or `default_url` to set your webhook URL:
+    
+    ```text
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit): 1
+    Please enter the new value for default_url: https://discord.com/api/webhooks/...
+    Successfully modified default_url to https://discord.com/api/webhooks/...!
+    ```
+  </Step>
+  
+  <Step title="Exit Configuration">
+    Press Enter or type `Q` to exit and save:
+    
+    ```text
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit): q
+    Successfully initialized whecho!
+    ```
+  </Step>
+</Steps>
+
+## Configuration Options
+
+The configuration file contains the following fields:
+
+<ParamField path="default_url" type="string" default="None">
+  The default webhook URL to send messages to. This is the primary configuration option you'll set.
+  
+  **Modifiable:** ✅ Yes
+</ParamField>
+
+<ParamField path="user" type="string" default="<system username>">
+  Your system username, automatically detected using `getpass.getuser()`. This is included in Discord webhook messages as `user@machine`.
+  
+  **Modifiable:** ✅ Yes
+</ParamField>
+
+<ParamField path="machine" type="string" default="auto">
+  Your machine hostname. When set to `"auto"`, whecho automatically detects the hostname using `socket.gethostname()` at runtime.
+  
+  **Modifiable:** ✅ Yes
+</ParamField>
+
+<ParamField path="version" type="string" default="<installed version>">
+  The installed version of whecho. Automatically set based on package metadata.
+  
+  **Modifiable:** ❌ No (read-only)
+</ParamField>
+
+<ParamField path="os" type="string" default="<detected OS>">
+  Your operating system (Linux, Windows, or Darwin). Automatically detected using `platform.system()`.
+  
+  **Modifiable:** ❌ No (read-only)
+</ParamField>
+
+## Configuration File Format
+
+The configuration file uses TOML format:
+
+```toml config.toml
+default_url = "https://discord.com/api/webhooks/123456789/abcdefg"
+version = "1.0.0"
+user = "john"
+os = "Linux"
+machine = "auto"
+```
+
+<Warning>
+While you can manually edit the configuration file, it's recommended to use `whecho --init` to ensure proper formatting and validation.
+</Warning>
+
+## Modifying Configuration
+
+To change your configuration after initial setup, run `whecho --init` again:
+
+```bash
+whecho --init
+```
+
+The command will detect that whecho is already initialized and load your existing configuration for modification:
+
+```text
+whecho is already initialized. Loading config file for changes
+Current config:
+[1] default_url: https://discord.com/api/webhooks/...
+[2] user: john
+[3] machine: laptop
+
+Please enter the number/name of the config option you would like to modify (empty or Q to exit):
+```
+
+### Modification Methods
+
+You can specify options in two ways:
+
+<Tabs>
+  <Tab title="By Number">
+    Enter the number shown in brackets:
+    ```text
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit): 1
+    Please enter the new value for default_url: https://new-webhook-url.com
+    ```
+  </Tab>
+  
+  <Tab title="By Name">
+    Enter the exact field name:
+    ```text
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit): default_url
+    Please enter the new value for default_url: https://new-webhook-url.com
+    ```
+  </Tab>
+</Tabs>
+
+## Machine Detection
+
+The `machine` field supports automatic hostname detection:
+
+### Auto Mode (Default)
+
+When set to `"auto"`, whecho dynamically detects your hostname each time it runs:
+
+```toml
+machine = "auto"
+```
+
+**Benefits:**
+- Works across multiple machines with the same config file
+- Automatically updates if hostname changes
+- Useful for shared configurations (e.g., in dotfiles repositories)
+
+### Manual Override
+
+You can set a custom machine name:
+
+```bash
+whecho --init
+# Select option 3 (machine)
+# Enter: my-custom-name
+```
+
+This results in:
+```toml
+machine = "my-custom-name"
+```
+
+**Use cases:**
+- More readable machine names (e.g., "laptop" instead of "johns-macbook-pro-2")
+- Consistent naming across hostname changes
+- Custom identifiers for specific contexts
+
+<Accordion title="How hostname detection works">
+  whecho uses Python's `socket.gethostname()` function to detect the machine name:
+  
+  ```python
+  import socket
+  
+  # If machine is set to "auto" in config:
+  if config['machine'] == 'auto':
+      config['machine'] = socket.gethostname()
+  ```
+  
+  This happens every time whecho loads the configuration, so the value is always current.
+</Accordion>
+
+## Configuration in Discord Messages
+
+For Discord webhooks, whecho uses the `user` and `machine` fields to create a username:
+
+```python
+# From source: whecho/_send_message.py:51-52
+data = {
+    'username': f"{conf['user']}@{conf['machine']}",
+    'content': message
+}
+```
+
+For example, with this config:
+```toml
+user = "john"
+machine = "laptop"
+```
+
+Messages appear in Discord as:
+```
+john@laptop
+Your message here
+```
+
+<Tip>
+Customize the `user` and `machine` fields to make your messages more identifiable, especially when multiple people or systems are sending to the same webhook.
+</Tip>
+
+## Configuration Loading Behavior
+
+### Automatic Loading
+
+whecho automatically loads configuration in these scenarios:
+
+<Steps>
+  <Step title="CLI without URL flag">
+    When you run whecho without `-u` or `--url`, it loads the default URL from config:
+    
+    ```bash
+    whecho "Hello"  # Uses config default_url
+    ```
+  </Step>
+  
+  <Step title="Python API without URL parameter">
+    When calling `whecho_simple()` without a URL:
+    
+    ```python
+    from whecho.whecho import whecho_simple
+    whecho_simple("Hello")  # Uses config default_url
+    ```
+  </Step>
+</Steps>
+
+### Corruption Recovery
+
+If your config file is corrupted or missing fields, whecho attempts to recover:
+
+```text
+whecho config is corrupted. default_url not found. Loading default value None. 
+Please run whecho --init to fix this.
+```
+
+Missing fields are automatically filled with default values, but you should run `whecho --init` to fix the configuration.
+
+## No Configuration Required
+
+You can use whecho without any configuration by always specifying the URL:
+
+```bash
+# CLI
+whecho -u https://discord.com/api/webhooks/... "Message"
+```
+
+```python
+# Python API
+from whecho.whecho import whecho_simple
+whecho_simple("Message", url="https://discord.com/api/webhooks/...")
+```
+
+This is useful for:
+- Testing different webhooks
+- One-off messages to non-default channels
+- Scripts that manage their own webhook URLs
+- Environments where config files aren't persistent
+
+## Environment-Specific Configuration
+
+For different environments, you can use different configuration files:
+
+### Using Shell Aliases
+
+```bash
+# ~/.bashrc or ~/.zshrc
+alias whecho-dev='whecho -u $DEV_WEBHOOK_URL'
+alias whecho-prod='whecho -u $PROD_WEBHOOK_URL'
+```
+
+### Using Environment Variables in Scripts
+
+```python
+import os
+from whecho.whecho import whecho_simple
+
+env = os.getenv('ENVIRONMENT', 'dev')
+webhook_urls = {
+    'dev': 'https://discord.com/api/webhooks/dev-url',
+    'staging': 'https://discord.com/api/webhooks/staging-url',
+    'prod': 'https://discord.com/api/webhooks/prod-url'
+}
+
+whecho_simple(f"Deployed to {env}", url=webhook_urls[env])
+```
+
+## Debugging Configuration
+
+Use the debug flag to see which configuration is being used:
+
+```bash
+whecho -d "Test message"
+```
+
+Output includes:
+```text
+Config pulled from : /home/user/.config/.whecho/config.toml
+Config: {'default_url': 'https://...', 'version': '1.0.0', 'user': 'john', 'os': 'Linux', 'machine': 'laptop'}
+```
+
+<CardGroup cols={2}>
+  <Card title="View Config Location" icon="folder">
+    See where your config file is stored:
+    ```bash
+    whecho -d "test" 2>&1 | grep "Config pulled"
+    ```
+  </Card>
+  
+  <Card title="Verify Config Values" icon="circle-check">
+    Check all loaded configuration values:
+    ```bash
+    whecho -d "test" 2>&1 | grep "Config:"
+    ```
+  </Card>
+  
+  <Card title="Test Webhook Detection" icon="magnifying-glass">
+    See which webhook type is detected:
+    ```bash
+    whecho -d "test" 2>&1 | grep "Detected"
+    ```
+  </Card>
+  
+  <Card title="Check HTTP Response" icon="server">
+    View the HTTP response from the webhook:
+    ```bash
+    whecho -d "test" 2>&1 | grep "Response:"
+    ```
+  </Card>
+</CardGroup>

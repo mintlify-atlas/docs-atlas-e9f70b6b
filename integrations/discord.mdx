@@ -1,0 +1,149 @@
+---
+title: 'Discord Integration'
+description: 'Send notifications to Discord channels using webhook URLs'
+---
+
+## Overview
+
+Whecho automatically detects Discord webhook URLs and formats messages appropriately for Discord's webhook API. Messages appear in your Discord channel with a custom username showing the originating user and machine.
+
+## Creating a Discord Webhook
+
+<Steps>
+  <Step title="Open Server Settings">
+    Navigate to your Discord server and click on **Server Settings**.
+  </Step>
+  
+  <Step title="Create Webhook">
+    Go to **Integrations** → **Webhooks** → **New Webhook**.
+    
+    Configure the webhook:
+    - Choose the channel where messages will appear
+    - Optionally customize the webhook name and avatar
+    - Copy the webhook URL
+  </Step>
+  
+  <Step title="Configure Whecho">
+    Initialize whecho with your Discord webhook URL:
+    ```bash
+    whecho --init
+    ```
+    
+    Enter your webhook URL when prompted for `default_url`.
+  </Step>
+</Steps>
+
+<Info>
+  Learn more about Discord webhooks in the [official Discord webhook documentation](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
+</Info>
+
+## URL Detection
+
+Whecho automatically detects Discord webhooks by checking if the URL contains:
+- `discord.com`
+- `discordapp.com`
+
+When detected, whecho uses Discord's specific JSON payload format.
+
+## JSON Payload Format
+
+Discord webhooks receive the following JSON structure:
+
+```json
+{
+  "username": "user@machine",
+  "content": "Your message here"
+}
+```
+
+### Payload Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `username` | string | Displays as `user@machine` (e.g., `john@laptop-ubuntu`) |
+| `content` | string | The message text to display in the channel |
+
+<Note>
+  The `username` field is automatically generated from your system username and hostname, helping you identify which machine sent the notification.
+</Note>
+
+## Usage Examples
+
+### Basic Command Line Usage
+
+```bash
+# Send a simple message
+whecho "Build completed successfully!"
+
+# Send a message to a specific Discord webhook
+whecho -u https://discord.com/api/webhooks/123/abc "Deployment finished"
+
+# Debug mode to see the JSON payload
+whecho -d "Test message"
+```
+
+### Python Usage
+
+```python
+from whecho.whecho import whecho_simple
+
+# Send a notification when a long-running task completes
+whecho_simple("Data processing complete!")
+
+# Use in error handling
+try:
+    # Your code here
+    process_data()
+    whecho_simple("✅ Data processing succeeded")
+except Exception as e:
+    whecho_simple(f"❌ Error: {str(e)}")
+```
+
+### Real-World Example
+
+```bash
+# Monitor a long-running build
+make build && whecho "Build finished!" || whecho "Build failed!"
+
+# Notify when training completes
+python train_model.py && whecho "Model training complete"
+```
+
+## Configuration
+
+You can customize the user and machine values that appear in Discord:
+
+```bash
+whecho --init
+```
+
+Select option `[2] user` or `[3] machine` to modify how your messages appear in Discord.
+
+<Warning>
+  Keep your webhook URLs private! Anyone with access to the URL can send messages to your Discord channel.
+</Warning>
+
+## Troubleshooting
+
+### Messages Not Appearing
+
+- Verify the webhook URL is correct and active in Discord
+- Check that the webhook's target channel still exists
+- Ensure your message is not empty
+
+### Testing Your Webhook
+
+Use debug mode to see the exact payload being sent:
+
+```bash
+whecho -d "Test message"
+```
+
+This will output:
+```
+Detected discord.com in URL
+Data: {'username': 'user@machine', 'content': 'Test message'}
+Response: <Response [204]>
+```
+
+A `204` response indicates success.

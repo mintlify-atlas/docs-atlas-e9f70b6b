@@ -1,80 +1,320 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get up and running with whecho in 5 minutes"
 ---
 
-## Get started in three steps
+Get whecho working in just a few steps. This guide will walk you through installation, configuration, and sending your first webhook notification.
 
-Get your documentation site running locally and make your first customization.
+## Overview
 
-### Step 1: Set up your local environment
+By the end of this quickstart, you'll be able to:
+- Install whecho on your system
+- Configure it with a webhook URL
+- Send notifications from the command line
+- Use whecho in Python scripts
+
+<Steps>
+  <Step title="Get a webhook URL">
+    First, you'll need a webhook URL from one of the supported platforms. Choose your platform:
+
+    <CardGroup cols={2}>
+      <Card title="Discord" icon="discord" href="/integrations/discord">
+        Create a Discord webhook in seconds
+      </Card>
+      <Card title="Slack" icon="slack" href="/integrations/slack">
+        Set up a Slack incoming webhook
+      </Card>
+      <Card title="Webex" icon="webex" href="/integrations/webex">
+        Configure Webex Teams integration
+      </Card>
+      <Card title="Microsoft Teams" icon="microsoft" href="/integrations/teams">
+        Create a Teams incoming webhook
+      </Card>
+    </CardGroup>
+
+    <Tip>
+    Don't have a webhook yet? You can come back to configuration later. For now, just install whecho with `pip install whecho`.
+    </Tip>
+  </Step>
+
+  <Step title="Install whecho">
+    Install whecho using pip:
+
+    <CodeGroup>
+    ```bash pip
+    pip install whecho
+    ```
+
+    ```bash pip3
+    pip3 install whecho
+    ```
+
+    ```bash pipx
+    pipx install whecho
+    ```
+    </CodeGroup>
+
+    Verify the installation:
+
+    ```bash
+    whecho --version
+    ```
+
+    <Note>
+    Requires Python 3.6 or higher. See the [installation guide](/installation) for more details.
+    </Note>
+  </Step>
+
+  <Step title="Initialize configuration">
+    Configure whecho with your webhook URL:
+
+    ```bash
+    whecho --init
+    ```
+
+    You'll see an interactive prompt:
+
+    ```
+    Current config:
+    [1] default_url: None
+    [2] user: your-username
+    [3] machine: your-machine-name
+
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit):
+    ```
+
+    Enter `1` to set the default webhook URL, then paste your webhook URL when prompted:
+
+    ```
+    Please enter the number/name of the config option you would like to modify (empty or Q to exit): 1
+    Please enter the new value for default_url: https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
+    Successfully modified default_url to https://discord.com/api/webhooks/YOUR_WEBHOOK_URL!
+    ```
+
+    Press Enter or type `q` to exit the configuration.
+
+    <Info>
+    You can modify the `user` and `machine` fields to customize how your notifications appear. These are auto-detected by default.
+    </Info>
+  </Step>
+
+  <Step title="Send your first notification">
+    Now you're ready to send your first notification!
+
+    ```bash
+    whecho "Hello from whecho! 👋"
+    ```
+
+    You should see the message appear in your configured chat platform immediately.
+
+    <Note>
+    The command will complete silently on success. Use the `-d` flag for debug output if you want to see the HTTP response.
+    </Note>
+  </Step>
+</Steps>
+
+## What's Next?
+
+Now that you have whecho set up, here are some ways to use it:
+
+### Command Line Usage
+
+Send notifications from shell scripts, build processes, or any command line workflow:
+
+```bash
+# Notify when a long-running command completes
+./long-running-script.sh && whecho "Script completed successfully!"
+
+# Or handle errors
+./deploy.sh && whecho "Deployment succeeded ✅" || whecho "Deployment failed ❌"
+
+# Use with different webhook URLs
+whecho -u https://hooks.slack.com/services/YOUR/WEBHOOK/URL "Sent to Slack!"
+
+# Debug mode to see what's happening
+whecho -d "Test message"
+```
+
+<Tip>
+Learn more about command-line usage in the [CLI guide](/usage/command-line).
+</Tip>
+
+### Python API
+
+Use whecho programmatically in your Python scripts:
+
+```python
+from whecho.whecho import whecho_simple
+
+# Send a notification
+whecho_simple("Python script completed!")
+
+# Send to a specific webhook
+whecho_simple(
+    msg="Custom webhook message",
+    url="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+)
+
+# Enable debug mode
+response = whecho_simple("Debug test", debug=True)
+print(f"Status: {response.status_code}")
+```
+
+<Tip>
+Check out the [Python API guide](/usage/python-api) for more examples.
+</Tip>
+
+## Common Use Cases
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+  <Accordion title="Notify on build completion">
+    ```bash
+    # In your CI/CD pipeline or build script
+    npm run build && whecho "Build completed! 🎉"
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+    # Or with error handling
+    if npm run build; then
+        whecho "Build succeeded ✅"
+    else
+        whecho "Build failed ❌"
+        exit 1
+    fi
+    ```
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+
+  <Accordion title="Monitor long-running scripts">
+    ```bash
+    #!/bin/bash
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+    whecho "Starting data processing job..."
+    python process_data.py
+    whecho "Data processing complete! Processed $(wc -l < output.csv) rows"
+    ```
+  </Accordion>
+
+  <Accordion title="Alert on system events">
+    ```bash
+    # In a monitoring script
+    if [ $(df -h / | tail -1 | awk '{print $5}' | sed 's/%//') -gt 90 ]; then
+        whecho "⚠️ WARNING: Disk usage above 90%"
+    fi
+    ```
+  </Accordion>
+
+  <Accordion title="Python script notifications">
+    ```python
+    from whecho.whecho import whecho_simple
+    import time
+    
+    def process_data():
+        whecho_simple("Starting data processing...")
+        
+        # Your processing logic here
+        time.sleep(10)
+        
+        whecho_simple("Data processing completed! ✅")
+    
+    if __name__ == "__main__":
+        process_data()
+    ```
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
+## Configuration
+
+whecho stores your configuration in a platform-specific location:
+
+- **Linux**: `~/.config/.whecho/config.toml`
+- **macOS**: `~/Library/Application Support/.whecho/config.toml`
+- **Windows**: `%APPDATA%\.whecho\config.toml`
+
+You can modify the configuration at any time by running `whecho --init` again.
+
+<Tip>
+Learn more about configuration options in the [Configuration guide](/usage/configuration).
+</Tip>
+
+## Advanced Features
+
+### Multiple Webhook URLs
+
+You can use different webhooks for different purposes without changing your default configuration:
+
+```bash
+# Send to Slack
+whecho -u $SLACK_WEBHOOK "Update for the team"
+
+# Send to Discord
+whecho -u $DISCORD_WEBHOOK "Update for the community"
+
+# Send to Teams
+whecho -u $TEAMS_WEBHOOK "Update for management"
+```
+
+### Debug Mode
+
+Troubleshoot webhook issues with debug mode:
+
+```bash
+whecho -d "Test message"
+```
+
+This will show:
+- The configuration being used
+- The webhook URL
+- The JSON payload being sent
+- The HTTP response from the server
+
+Learn more in the [CLI Commands reference](/reference/cli-commands).
+
+## Troubleshooting
 
 <AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Accordion title="whecho: command not found">
+    Make sure Python's bin directory is in your PATH. If you installed with `--user`, the script might be in `~/.local/bin/` (Linux/macOS) or `%APPDATA%\Python\Scripts\` (Windows).
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    Try:
+    ```bash
+    python -m whecho "Test message"
+    ```
+  </Accordion>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
+  <Accordion title="No URL passed. Did you run whecho --init?">
+    You need to configure whecho with a webhook URL first:
+    ```bash
+    whecho --init
+    ```
+    Then enter your webhook URL when prompted.
+  </Accordion>
+
+  <Accordion title="Message not appearing in chat">
+    1. Verify your webhook URL is correct
+    2. Check the webhook is active in your platform settings
+    3. Use debug mode to see the response: `whecho -d "Test"`
+    4. Check for error messages in the output
+  </Accordion>
+
+  <Accordion title="HTTPError or connection issues">
+    - Verify your internet connection
+    - Check if the webhook URL is still valid
+    - Some platforms may have rate limits
+    - Use `-d` flag to see the full error response
   </Accordion>
 </AccordionGroup>
 
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Command Line Guide" icon="terminal" href="/usage/command-line">
+    Master all CLI features and options
+  </Card>
+  <Card title="Python API" icon="code" href="/usage/python-api">
+    Integrate whecho into your applications
+  </Card>
+  <Card title="Integrations" icon="plug" href="/integrations/discord">
+    Platform-specific setup guides
+  </Card>
+  <Card title="CLI Reference" icon="book" href="/reference/cli-commands">
+    Complete command reference
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

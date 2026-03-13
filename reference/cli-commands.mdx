@@ -1,0 +1,196 @@
+---
+title: CLI Command Reference
+description: Complete reference for the whecho command-line interface
+---
+
+## Overview
+
+The `whecho` command-line tool sends messages to webhook URLs, acting as a "Linux echo with webhooks." It supports multiple webhook platforms including Discord, Slack, Microsoft Teams, and Webex.
+
+## Basic Usage
+
+```bash
+whecho [OPTIONS] [MSG ...]
+```
+
+## Command-Line Options
+
+<ParamField path="MSG" type="string" optional>
+  The message to echo and send to the webhook. Can be provided as positional arguments that will be joined with spaces.
+  
+  ```bash
+  whecho Hello, World!
+  ```
+</ParamField>
+
+<ParamField path="--version" type="flag">
+  Prints the version of whecho and exits.
+  
+  ```bash
+  whecho --version
+  ```
+</ParamField>
+
+<ParamField path="-m, --msg" type="string" optional>
+  The message to echo. This is an alternative to providing the message as positional arguments. If both are provided, `--msg` takes precedence.
+  
+  ```bash
+  whecho --msg "Hello, World!"
+  whecho -m "Hello, World!"
+  ```
+</ParamField>
+
+<ParamField path="--init" type="flag">
+  Initializes whecho by creating a configuration file, or modifies the existing configuration. This interactive process allows you to set a default webhook URL and other settings.
+  
+  ```bash
+  whecho --init
+  ```
+  
+  When run, you'll be prompted to configure:
+  - `default_url`: The default webhook URL to use
+  - `user`: Username to include in messages (defaults to system user)
+  - `machine`: Machine name to include in messages (defaults to hostname)
+</ParamField>
+
+<ParamField path="-u, --url" type="string" optional>
+  The webhook URL to send the message to. Overrides the default URL from the configuration file.
+  
+  ```bash
+  whecho -u https://discord.com/api/webhooks/... "Hello!"
+  whecho --url https://hooks.slack.com/... "Hello!"
+  ```
+</ParamField>
+
+<ParamField path="-d, --debug" type="flag">
+  Enables debug mode, which prints detailed information about arguments, configuration, and the HTTP response.
+  
+  ```bash
+  whecho --debug "Test message"
+  ```
+</ParamField>
+
+## Configuration File
+
+The configuration file is stored in different locations depending on your operating system:
+
+<Tabs>
+  <Tab title="Linux">
+    ```
+    ~/.config/.whecho/config.toml
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ```
+    ~/Library/Application Support/.whecho/config.toml
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```
+    ~\AppData\Roaming\.whecho\config.toml
+    ```
+  </Tab>
+</Tabs>
+
+### Configuration Options
+
+The configuration file uses TOML format and contains:
+
+- **default_url**: The default webhook URL (required, set via `--init`)
+- **version**: The whecho version (auto-managed)
+- **user**: Username included in webhook messages (modifiable)
+- **os**: Operating system (auto-managed)
+- **machine**: Machine name or "auto" for hostname (modifiable)
+
+## Exit Codes
+
+<ResponseField name="0" type="Success">
+  Command executed successfully.
+</ResponseField>
+
+<ResponseField name="1" type="Error">
+  Error occurred:
+  - whecho not initialized and no URL provided
+  - No message provided
+  - HTTP request failed
+</ResponseField>
+
+## Examples
+
+### First-Time Setup
+
+```bash
+# Initialize whecho with your webhook URL
+whecho --init
+
+# Send your first message using the default URL
+whecho "Hello from whecho!"
+```
+
+### Sending Messages
+
+```bash
+# Send a simple message (uses default URL from config)
+whecho Hello, World!
+
+# Send a message with the -m flag
+whecho -m "Build completed successfully!"
+
+# Send to a specific webhook URL
+whecho -u https://discord.com/api/webhooks/... "Deployment finished"
+
+# Send with debug information
+whecho --debug "Testing webhook"
+```
+
+### Common Use Cases
+
+<CodeGroup>
+```bash Build Notifications
+# Notify when a build completes
+make build && whecho "Build completed!" || whecho "Build failed!"
+```
+
+```bash Script Monitoring
+# Send progress updates from a long-running script
+#!/bin/bash
+whecho "Starting data processing..."
+./process_data.sh
+whecho "Data processing complete!"
+```
+
+```bash Cron Jobs
+# Add to crontab for scheduled notifications
+0 2 * * * /usr/local/bin/whecho "Daily backup completed"
+```
+
+```bash CI/CD Integration
+# In your CI/CD pipeline
+- name: Notify deployment
+  run: whecho -u $WEBHOOK_URL "Deployment to production successful"
+```
+</CodeGroup>
+
+## Supported Webhook Platforms
+
+whecho automatically detects and formats messages for:
+
+- **Discord** (discord.com, discordapp.com)
+- **Slack** (slack.com)
+- **Microsoft Teams** (webhook.office.com)
+- **Webex** (webexapis.com)
+- **Generic webhooks** (any other URL with JSON POST support)
+
+## Error Messages
+
+<Note>
+  **"whecho is not initialized"**: Run `whecho --init` to set up your default webhook URL.
+</Note>
+
+<Note>
+  **"No message passed"**: Provide a message either as positional arguments or with `-m/--msg`.
+</Note>
+
+<Note>
+  **"No URL passed"**: Either run `whecho --init` to set a default URL or provide one with `-u/--url`.
+</Note>

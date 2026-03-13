@@ -1,0 +1,298 @@
+---
+title: 'Webex Integration'
+description: 'Send markdown-formatted notifications to Webex Teams spaces'
+---
+
+## Overview
+
+Whecho supports Cisco Webex Teams webhooks with full markdown formatting support. This allows you to send rich, formatted notifications to Webex spaces directly from your command line or Python applications.
+
+## Creating a Webex Webhook
+
+<Steps>
+  <Step title="Access Webex App Hub">
+    Navigate to the [Webex Incoming Webhooks app](https://apphub.webex.com/applications/incoming-webhooks-cisco-systems-38054-23307-75252).
+  </Step>
+  
+  <Step title="Add to Space">
+    1. Click **Connect** or **Add to Space**
+    2. Sign in to your Webex account if prompted
+    3. Select the Webex space where you want to receive notifications
+    4. Authorize the incoming webhook integration
+  </Step>
+  
+  <Step title="Copy Webhook URL">
+    After authorization, copy the webhook URL that contains `webexapis.com`.
+  </Step>
+  
+  <Step title="Configure Whecho">
+    Set up whecho with your Webex webhook:
+    ```bash
+    whecho --init
+    ```
+    
+    Enter your Webex webhook URL when prompted for `default_url`.
+  </Step>
+</Steps>
+
+<Info>
+  Learn more about Webex incoming webhooks at the [Webex App Hub](https://apphub.webex.com/applications/incoming-webhooks-cisco-systems-38054-23307-75252).
+</Info>
+
+## URL Detection
+
+Whecho automatically detects Webex webhooks when the URL contains:
+- `webexapis.com`
+
+When detected, whecho uses Webex's markdown-enabled payload format.
+
+## JSON Payload Format
+
+Webex webhooks receive messages in a markdown-enabled format:
+
+```json
+{
+  "markdown": "Your message here"
+}
+```
+
+### Payload Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `markdown` | string | The message text with optional markdown formatting |
+
+<Note>
+  **Markdown Support**: Unlike Slack and Discord, Webex uses the `markdown` field, which means your messages can include full markdown formatting syntax.
+</Note>
+
+## Markdown Formatting
+
+Webex supports rich markdown formatting in messages:
+
+### Text Formatting
+
+```bash
+# Bold text
+whecho "**Important:** Server maintenance scheduled"
+
+# Italic text
+whecho "*Build completed in 5 minutes*"
+
+# Bold and italic
+whecho "***Critical alert***"
+
+# Strikethrough
+whecho "~~Old information~~"
+```
+
+### Headers
+
+```bash
+# Headers
+whecho "# Critical Alert"
+whecho "## Deployment Status"
+whecho "### Build Information"
+```
+
+### Lists
+
+```bash
+# Bullet lists
+whecho "Build completed:
+- Tests passed
+- Coverage: 95%
+- No errors"
+
+# Numbered lists
+whecho "Deployment steps:
+1. Build image
+2. Push to registry
+3. Update k8s cluster"
+```
+
+### Code Blocks
+
+```bash
+# Inline code
+whecho "Error code: \`500\`"
+
+# Code blocks (note: use actual backticks in your message)
+whecho '```\nERROR: Connection timeout\nHost: 192.168.1.1\n```'
+```
+
+### Links
+
+```bash
+# Hyperlinks
+whecho "[View Dashboard](https://dashboard.example.com)"
+
+# Direct URLs
+whecho "Check logs: https://logs.example.com"
+```
+
+## Usage Examples
+
+### Command Line Usage
+
+```bash
+# Simple notification
+whecho "Backup completed successfully"
+
+# Formatted notification
+whecho "**Build Status**: ✅ Success"
+
+# Multi-line message with markdown
+whecho "# Deployment Complete
+
+- Environment: production
+- Version: 2.1.0
+- Time: $(date)"
+
+# Send to specific Webex webhook
+whecho -u https://webexapis.com/v1/webhooks/incoming/... "Alert message"
+
+# Debug mode
+whecho -d "Test message"
+```
+
+### Python Integration
+
+```python
+from whecho.whecho import whecho_simple
+
+# Simple notification
+whecho_simple("Data sync completed")
+
+# Formatted notification with markdown
+whecho_simple(
+    "**Build Report**\n\n"
+    "- Status: Success\n"
+    "- Duration: 5m 32s\n"
+    "- Tests: 152/152 passed"
+)
+
+# Error notification with code block
+try:
+    process_data()
+except Exception as e:
+    whecho_simple(
+        f"**Error in data processing**\n\n"
+        f"```\n{str(e)}\n```"
+    )
+```
+
+### Advanced Examples
+
+```bash
+# CI/CD pipeline notification
+pytest && whecho "**Tests Passed** ✅
+
+Results:
+- Unit tests: $(pytest --co -q | wc -l) tests
+- Coverage: 95%
+- Duration: 2m 15s"
+
+# System monitoring alert
+whecho "# System Alert
+
+**CPU Usage:** 85%
+**Memory:** 12GB / 16GB
+**Disk:** 450GB / 500GB
+
+[View Monitoring Dashboard](https://monitor.example.com)"
+
+# Deployment summary
+whecho "## Deployment to Production
+
+✅ All checks passed
+
+**Details:**
+1. Build: success
+2. Tests: 100% passed
+3. Security scan: no issues
+4. Deployment: complete
+
+Version: \`v2.3.1\`
+Commit: \`abc123f\`"
+```
+
+## Configuration
+
+Customize your whecho settings:
+
+```bash
+whecho --init
+```
+
+Available options:
+- `default_url`: Your Webex webhook URL
+- `user`: System username
+- `machine`: Machine hostname
+
+<Warning>
+  Keep your Webex webhook URLs confidential. Anyone with the URL can send messages to your Webex space.
+</Warning>
+
+## Troubleshooting
+
+### Messages Not Appearing
+
+1. **Verify webhook URL**: Ensure it contains `webexapis.com`
+2. **Check space access**: Confirm the webhook is still active in your Webex space
+3. **Test with debug mode**:
+   ```bash
+   whecho -d "Test message"
+   ```
+   
+   Expected output:
+   ```
+   Detected webexapis.com in URL
+   Data: {'markdown': 'Test message'}
+   Response: <Response [200]>
+   ```
+
+### Markdown Not Rendering
+
+If markdown formatting isn't showing correctly:
+
+- Ensure you're using proper markdown syntax
+- Check for proper escaping of special characters
+- Test with simple formatting first (e.g., `**bold**`)
+
+### Common HTTP Status Codes
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| 200 | Success | Message delivered |
+| 400 | Bad request | Check message format |
+| 401 | Unauthorized | Verify webhook URL |
+| 404 | Not found | Webhook may be deleted |
+| 429 | Rate limited | Wait before retrying |
+
+## Multiple Spaces
+
+Send notifications to different Webex spaces using multiple webhooks:
+
+```bash
+# Default space
+whecho "General notification"
+
+# Team-specific space
+whecho -u $WEBEX_TEAM_WEBHOOK "Team update"
+
+# Alerts space
+whecho -u $WEBEX_ALERTS_WEBHOOK "**ALERT**: High memory usage"
+```
+
+<Info>
+  Store different webhook URLs as environment variables to easily send notifications to multiple Webex spaces.
+</Info>
+
+## Best Practices
+
+1. **Use markdown formatting** to make important information stand out
+2. **Include context** in your notifications (e.g., server name, timestamp)
+3. **Test with debug mode** when setting up new webhooks
+4. **Use headers and lists** for structured information
+5. **Keep URLs secure** by storing them as environment variables

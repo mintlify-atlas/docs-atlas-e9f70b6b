@@ -1,0 +1,327 @@
+---
+title: 'Microsoft Teams Integration'
+description: 'Send notifications to Microsoft Teams channels via incoming webhooks'
+---
+
+## Overview
+
+Whecho integrates with Microsoft Teams through Incoming Webhooks, enabling you to send notifications from your terminal or Python scripts directly to Teams channels.
+
+## Creating a Teams Webhook
+
+<Steps>
+  <Step title="Open Team Settings">
+    1. Navigate to the Microsoft Teams channel where you want to receive notifications
+    2. Click the **•••** (More options) button next to the channel name
+    3. Select **Connectors** or **Workflows** (depending on your Teams version)
+  </Step>
+  
+  <Step title="Add Incoming Webhook">
+    For classic webhooks:
+    1. Search for "Incoming Webhook" in the connectors list
+    2. Click **Configure** or **Add**
+    3. Give your webhook a name (e.g., "Whecho Notifications")
+    4. Optionally upload a custom image
+    5. Click **Create**
+  </Step>
+  
+  <Step title="Copy Webhook URL">
+    Copy the webhook URL that starts with `https://outlook.office.com/webhook/...` or `https://[tenant].webhook.office.com/...`
+  </Step>
+  
+  <Step title="Configure Whecho">
+    Initialize whecho with your Teams webhook:
+    ```bash
+    whecho --init
+    ```
+    
+    Paste the webhook URL when prompted for `default_url`.
+  </Step>
+</Steps>
+
+<Info>
+  For detailed setup instructions, visit the [Microsoft Teams webhook documentation](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
+</Info>
+
+## URL Detection
+
+Whecho automatically detects Microsoft Teams webhooks when the URL contains:
+- `webhook.office.com`
+
+When detected, whecho formats the message appropriately for Teams' API.
+
+## JSON Payload Format
+
+Teams webhooks receive a simple JSON payload:
+
+```json
+{
+  "text": "Your message here"
+}
+```
+
+### Payload Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | The message text to display in the Teams channel |
+
+<Note>
+  Teams uses the same `text` field format as Slack. Whecho automatically detects which platform you're using based on the webhook URL.
+</Note>
+
+## Usage Examples
+
+### Command Line Usage
+
+```bash
+# Send a basic notification
+whecho "Build completed successfully"
+
+# Send to a specific Teams webhook
+whecho -u https://tenant.webhook.office.com/webhookb2/... "Deployment finished"
+
+# Debug mode to see the payload
+whecho -d "Test notification"
+```
+
+### Python Integration
+
+```python
+from whecho.whecho import whecho_simple
+
+# Basic notification
+whecho_simple("Database backup completed")
+
+# Notify after long-running operation
+def train_model():
+    # Training logic here
+    model = perform_training()
+    whecho_simple("Model training completed successfully")
+    return model
+
+# Error handling
+try:
+    deploy_application()
+    whecho_simple("✅ Application deployed to production")
+except Exception as e:
+    whecho_simple(f"❌ Deployment failed: {str(e)}")
+```
+
+### Real-World Examples
+
+```bash
+# CI/CD notifications
+git pull && \
+  npm install && \
+  npm run build && \
+  npm test && \
+  whecho "✅ Build pipeline completed" || \
+  whecho "❌ Build pipeline failed"
+
+# Long-running scripts
+python data_processing.py && whecho "Data processing complete"
+
+# System monitoring
+if [ $(df -h / | awk 'NR==2 {print $5}' | sed 's/%//') -gt 80 ]; then
+  whecho "⚠️ WARNING: Disk usage above 80%"
+fi
+
+# Backup notifications
+tar -czf backup.tar.gz /data && \
+  aws s3 cp backup.tar.gz s3://backups/ && \
+  whecho "Backup uploaded to S3 successfully"
+```
+
+## Advanced Usage
+
+### Multiple Webhooks
+
+Send notifications to different Teams channels:
+
+```bash
+# General notifications to team channel
+whecho "Daily report generated"
+
+# Critical alerts to operations channel
+whecho -u $TEAMS_OPS_WEBHOOK "CRITICAL: Service is down"
+
+# Deployment notifications to DevOps channel
+whecho -u $TEAMS_DEVOPS_WEBHOOK "Production deployment started"
+```
+
+### Environment Variables
+
+Store webhook URLs securely:
+
+```bash
+# In your .bashrc or .zshrc
+export TEAMS_DEFAULT_WEBHOOK="https://tenant.webhook.office.com/..."
+export TEAMS_ALERTS_WEBHOOK="https://tenant.webhook.office.com/..."
+
+# Usage
+whecho -u $TEAMS_ALERTS_WEBHOOK "Server restarted"
+```
+
+### Scheduled Notifications
+
+```bash
+# Using cron for scheduled reports
+# Add to crontab: 0 9 * * * /path/to/script.sh
+
+#!/bin/bash
+REPORT=$(generate_daily_report.py)
+whecho "Daily Report:\n\n$REPORT"
+```
+
+## Message Formatting
+
+While whecho sends plain text, you can use emojis and special characters:
+
+```bash
+# Success indicators
+whecho "✅ Tests passed"
+whecho "✓ Deployment complete"
+
+# Warnings and errors
+whecho "⚠️ High memory usage detected"
+whecho "❌ Build failed"
+whecho "🚨 Critical alert"
+
+# Status updates
+whecho "🔄 Processing data..."
+whecho "📊 Report generated"
+whecho "🚀 Application deployed"
+```
+
+## Configuration
+
+Customize your whecho settings:
+
+```bash
+whecho --init
+```
+
+Configuration options:
+- `default_url`: Your Microsoft Teams webhook URL  
+- `user`: System username (for reference in your messages)
+- `machine`: Machine hostname (for reference in your messages)
+
+<Warning>
+  **Security Notice**: Keep your webhook URLs private. Anyone with access to the URL can post messages to your Teams channel.
+</Warning>
+
+## Troubleshooting
+
+### Messages Not Appearing
+
+<Steps>
+  <Step title="Verify webhook URL">
+    Ensure the URL contains `webhook.office.com` and is complete.
+  </Step>
+  
+  <Step title="Test with debug mode">
+    ```bash
+    whecho -d "Test message"
+    ```
+    
+    Expected output:
+    ```
+    Detected webhook.office.com in URL
+    Data: {'text': 'Test message'}
+    Response: <Response [200]>
+    ```
+  </Step>
+  
+  <Step title="Check webhook status">
+    Verify the webhook is still active in Teams:
+    - Go to the channel
+    - Check **Connectors** or **Workflows**
+    - Confirm the webhook is listed and enabled
+  </Step>
+</Steps>
+
+### Common Error Codes
+
+| Status Code | Meaning | Solution |
+|-------------|---------|----------|
+| 200 | Success | Message delivered |
+| 400 | Bad request | Check message format |
+| 404 | Not found | Webhook may be deleted, recreate it |
+| 429 | Too many requests | Rate limited, wait before retrying |
+| 500 | Server error | Temporary Teams issue, retry |
+
+### Webhook Not Found (404)
+
+If you receive a 404 error:
+1. The webhook may have been deleted from Teams
+2. Create a new webhook following the setup steps
+3. Update your whecho configuration with the new URL
+
+### Testing Your Configuration
+
+Verify everything is working:
+
+```bash
+# Test with debug output
+whecho -d "Configuration test"
+
+# Check if the message appears in your Teams channel
+# Debug output should show:
+# - Detected webhook.office.com in URL
+# - Response: <Response [200]>
+```
+
+## Best Practices
+
+1. **Use descriptive messages**: Include context like server names, timestamps, or job IDs
+2. **Separate webhook URLs**: Use different webhooks for different notification types (alerts vs. info)
+3. **Test in a separate channel**: Create a test channel for development
+4. **Secure your URLs**: Store webhook URLs as environment variables or in secure configuration files
+5. **Handle errors gracefully**: Use `||` to catch command failures
+
+```bash
+# Good: Descriptive message
+whecho "Production API deployment completed - v2.1.0 - $(date)"
+
+# Better: Include outcome and context
+docker build -t myapp:latest . && \
+  docker push myapp:latest && \
+  whecho "✅ Docker image built and pushed: myapp:latest" || \
+  whecho "❌ Docker build/push failed - check logs"
+```
+
+## Integration Examples
+
+### GitHub Actions
+
+```yaml
+name: Notify Teams
+on: [push]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install whecho
+        run: pip install whecho
+      
+      - name: Send notification
+        env:
+          TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          whecho -u $TEAMS_WEBHOOK "Build completed for ${{ github.ref }}"
+```
+
+### Automated Monitoring
+
+```bash
+#!/bin/bash
+# monitor.sh - Run via cron every 5 minutes
+
+CPU=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+
+if (( $(echo "$CPU > 90" | bc -l) )); then
+  whecho "⚠️ High CPU alert: ${CPU}% on $(hostname)"
+fi
+```

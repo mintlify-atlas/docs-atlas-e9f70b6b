@@ -1,0 +1,232 @@
+---
+title: Command Line Usage
+description: Learn how to use whecho from the command line
+---
+
+## Overview
+
+whecho is designed to be used from the command line just like the standard `echo` command, but with the added ability to send messages to webhooks. This makes it perfect for shell scripts, CI/CD pipelines, and any command-line workflow where you need notifications.
+
+## Basic Usage
+
+The simplest way to use whecho is to pass your message as a positional argument:
+
+```bash
+whecho "hello there"
+```
+
+This sends "hello there" to your configured default webhook URL.
+
+## Command Line Flags
+
+### Message Flags
+
+<Tabs>
+  <Tab title="Positional Argument">
+    ```bash
+    whecho "Your message here"
+    ```
+    Pass the message directly as a positional argument. Multiple words are automatically joined.
+
+    ```bash
+    whecho hello there
+    # Sends: "hello there"
+    ```
+  </Tab>
+  <Tab title="-m / --msg Flag">
+    ```bash
+    whecho -m "Your message here"
+    whecho --msg "Your message here"
+    ```
+    Explicitly specify the message using the `-m` or `--msg` flag.
+  </Tab>
+</Tabs>
+
+### URL Flag
+
+**`-u` / `--url`** - Override the default webhook URL
+
+```bash
+whecho -u https://discord.com/api/webhooks/... "Sending to custom URL"
+```
+
+This is useful when you want to send to a different webhook than your configured default.
+
+### Debug Flag
+
+**`-d` / `--debug`** - Enable debugging output
+
+```bash
+whecho -d "Debug message"
+```
+
+When enabled, whecho prints:
+- Arguments passed
+- Config file location and contents
+- Detected webhook type
+- HTTP response details
+
+<Note>
+The debug flag is invaluable when troubleshooting webhook issues or understanding how whecho processes your messages.
+</Note>
+
+### Configuration Flags
+
+**`--init`** - Initialize or modify configuration
+
+```bash
+whecho --init
+```
+
+This launches an interactive prompt to set up your default webhook URL and other settings. See [Configuration](/usage/configuration) for more details.
+
+**`--version`** - Print version and exit
+
+```bash
+whecho --version
+```
+
+## Common Use Cases
+
+<Steps>
+  <Step title="Shell Script Notifications">
+    Get notified when long-running scripts complete:
+
+    ```bash
+    #!/bin/bash
+    # backup.sh
+    
+    echo "Starting backup..."
+    rsync -av /data /backup
+    
+    if [ $? -eq 0 ]; then
+      whecho "✅ Backup completed successfully"
+    else
+      whecho "❌ Backup failed!"
+    fi
+    ```
+  </Step>
+  
+  <Step title="CI/CD Pipeline Integration">
+    Send notifications from your CI/CD workflows:
+
+    ```bash
+    # .github/workflows/test.yml
+    - name: Run tests
+      run: pytest tests/
+    
+    - name: Notify on success
+      if: success()
+      run: whecho "✅ Tests passed for ${{ github.sha }}"
+    
+    - name: Notify on failure
+      if: failure()
+      run: whecho "❌ Tests failed for ${{ github.sha }}"
+    ```
+  </Step>
+  
+  <Step title="Command Chaining">
+    Chain whecho with other commands:
+
+    ```bash
+    # Notify when a build finishes
+    make build && whecho "Build completed!" || whecho "Build failed!"
+    
+    # Notify after a long download
+    wget https://example.com/large-file.tar.gz && whecho "Download complete"
+    ```
+  </Step>
+  
+  <Step title="Cron Job Notifications">
+    Get notified about scheduled task completion:
+
+    ```bash
+    # crontab entry
+    0 2 * * * /path/to/backup.sh && whecho "Daily backup completed"
+    ```
+  </Step>
+</Steps>
+
+## Debug Mode Deep Dive
+
+The `-d` flag provides detailed information about whecho's operation:
+
+```bash
+whecho -d "Test message"
+```
+
+<CodeGroup>
+```text Example Output
+Arguments passed: Namespace(version=False, msg=None, message=['Test', 'message'], init=False, url=None, debug=True)
+Config pulled from : /home/user/.config/.whecho/config.toml
+Config: {'default_url': 'https://discord.com/api/webhooks/...', 'version': '1.0.0', 'user': 'john', 'os': 'Linux', 'machine': 'laptop'}
+Message: Test message
+Detected discord.com in URL
+Data: {'username': 'john@laptop', 'content': 'Test message'}
+Response: <Response [204]>
+```
+</CodeGroup>
+
+<Warning>
+Be careful when using debug mode with sensitive webhook URLs, as it will print the full URL to stdout.
+</Warning>
+
+## Tips and Tricks
+
+<CardGroup cols={2}>
+  <Card title="Multi-line Messages" icon="align-left">
+    Use quotes to preserve newlines:
+    ```bash
+    whecho "Line 1
+Line 2
+Line 3"
+    ```
+  </Card>
+  
+  <Card title="Variable Expansion" icon="dollar-sign">
+    Include shell variables in messages:
+    ```bash
+    whecho "Deployed to $ENVIRONMENT at $(date)"
+    ```
+  </Card>
+  
+  <Card title="Multiple Webhooks" icon="share-nodes">
+    Use aliases for different destinations:
+    ```bash
+    alias whecho-team='whecho -u $TEAM_WEBHOOK_URL'
+    whecho-team "Message for the team"
+    ```
+  </Card>
+  
+  <Card title="Exit Code Handling" icon="circle-check">
+    whecho exits with code 1 on errors:
+    ```bash
+    whecho "Test" || echo "Failed to send"
+    ```
+  </Card>
+</CardGroup>
+
+## Help Output
+
+For a quick reference, run:
+
+```bash
+whecho --help
+```
+
+```text
+usage: whecho [-h] [--version] [-m MSG] [--init] [-u URL] [-d] [MSG [MSG ...]]
+
+Linux echo with webhooks! ⚓
+
+positional arguments:
+  MSG                The message to echo.
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --version          Prints the version of whecho and exits.
+  -m MSG, --msg MSG  The message to echo (same as 1st positional argument).
+  --init             Initializes whecho. Also used to change current config.
+  -u URL, --url URL  The webhook URL to send the message to.
+  -d, --debug        Whether to print debugging information.
+```
